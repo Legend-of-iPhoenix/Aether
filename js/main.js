@@ -96,16 +96,16 @@ activeMoves.push({
 });
 
 function tick() {
-	if (keys["ArrowUp"] && player.y > -16) {
+	if ((keys["ArrowUp"] || keys["KeyW"]) && player.y > -16) {
 		player.y -= 0.2
 	}
-	if (keys["ArrowDown"] && player.y < 16) {
+	if ((keys["ArrowDown"] || keys["KeyS"]) && player.y < 16) {
 		player.y += 0.2
 	}
-	if (keys["ArrowLeft"] && player.x > -11) {
+	if ((keys["ArrowLeft"] || keys["KeyA"]) && player.x > -11) {
 		player.x -= 0.2
 	}
-	if (keys["ArrowRight"] && player.x < 11) {
+	if ((keys["ArrowRight"] || keys["KeyD"]) && player.x < 11) {
 		player.x += 0.2
 	}
 	playerBulletCooldown--;
