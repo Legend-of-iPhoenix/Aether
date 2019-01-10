@@ -1,6 +1,5 @@
 var canvas = document.querySelector("canvas");
 var context = canvas.getContext('2d');
-
 var keys = {};
 
 window.onkeydown = function(event) {
@@ -20,20 +19,28 @@ var playerBulletCooldown = 0;
 var player = {
 	x: 0,
 	y: 11,
-	width: .5,
-	height: .5,
+	size: 0.5,
 	health: 100
 }
 
 var enemies = [
 	{
-		x: 0,
+		x: 2,
 		y: -5,
 		size: .75, 
 		health: 20,
 		isBoss: true,
-		moves: [0, 1, 2],
-		doingMove: true
+		moves:  [0, 1, 2, 3],
+		doingMove: false
+	},
+	{
+		x: -2,
+		y: -5,
+		size: .75, 
+		health: 20,
+		isBoss: true,
+		moves:  [0, 1, 2, 3],
+		doingMove: false
 	}
 ]
 
@@ -51,6 +58,7 @@ var boss_moves = [
 				y: boss.y + 0.25 * y,
 				deltaX: x / 2,
 				deltaY: y / 2,
+				size: .125,
 				damage: 10
 			});
 		}
@@ -65,6 +73,7 @@ var boss_moves = [
 				y: boss.y + 0.25 * y,
 				deltaX: x / 2,
 				deltaY: y / 2,
+				size: .125,
 				damage: 10
 			});
 		}
@@ -79,7 +88,22 @@ var boss_moves = [
 				y: boss.y + 0.25 * y,
 				deltaX: x / 2,
 				deltaY: y / 2,
+				size: .125,
 				damage: 10
+			});
+		}
+	},
+	function(boss, frame) {
+		if (frame % 50 == 0) {
+			enemyBullets.push({
+				x: boss.x,
+				y: boss.y,
+				deltaX: 0,
+				deltaY: 0,
+				size: .5,
+				damage: 20,
+				seeking: true,
+				age: 750
 			});
 		}
 	}
@@ -89,13 +113,10 @@ function sq(x) {
 	return x * x
 }
 
-activeMoves.push({
-	b: enemies[0],
-	f: boss_moves[enemies[0].moves[Math.floor(Math.random() * enemies[0].moves.length)]],
-	frames:  100
-});
-
+var frameTime = 0;
+var frameEnd = 0;
 function tick() {
+	var frameStart = performance.now();
 	if ((keys["ArrowUp"] || keys["KeyW"]) && player.y > -16) {
 		player.y -= 0.2
 	}
@@ -138,6 +159,10 @@ function tick() {
 	var unit = Math.min(canvas.width, canvas.height)/32;
 	// used for scaling so that every screen size gets the same game.
 
+	context.fillStyle = "black";
+	context.textBaseline = "hanging";
+	context.fillText(Math.floor(10 * frameTime) + ' \u03BCs per frame', -canvas.width/2, -canvas.height/2 + unit/4)
+
 	// end pre-calculations, start drawing
 	context.fillStyle = "black";
 	context.beginPath();
@@ -162,25 +187,49 @@ function tick() {
 		}
 	}).filter(x=>x);
 
+	var childBullets = [];
 	enemyBullets = enemyBullets.map(bullet=>{
+		if (bullet.seeking) {
+			var angle = Math.atan2(player.y - bullet.y, player.x - bullet.x);
+			bullet.deltaX = (Math.cos(angle) / 32) * 0.8 + bullet.deltaX * 0.2
+			bullet.deltaY = (Math.sin(angle) / 32) * 0.8 + bullet.deltaY * 0.2
+			bullet.age--;
+			if (bullet.age <= 0) {
+				for (var i = 0; i < 10; i++) {
+					var x = Math.cos(i * Math.PI / 5);
+					var y = Math.sin(i * Math.PI / 5);
+					childBullets.push({
+						x: bullet.x + 0.25 * x,
+						y: bullet.y + 0.25 * y,
+						deltaX: 2 * x / 3,
+						deltaY: 2 * y / 3,
+						size: .125,
+						damage: 5
+					});
+				}
+				return null
+			}
+		}
 		bullet.x += bullet.deltaX
 		bullet.y += bullet.deltaY
 
 		context.fillStyle = "red";
 		context.beginPath();
-		context.arc(bullet.x * unit, bullet.y * unit, unit/8, 0, 2 * Math.PI);
+		context.arc(bullet.x * unit, bullet.y * unit, unit * bullet.size, 0, 2 * Math.PI);
 		context.fill();
 
 		if (Math.abs(bullet.x) > 11 || Math.abs(bullet.y) > 16) {
 			return null
 		}
-		if (sq(bullet.x - player.x) + sq(bullet.y - player.y) < 25/64) { // 25/64 = (.5 + .125) ** 2
-			console.log("collision!");
+		if (sq(bullet.x - player.x) + sq(bullet.y - player.y) < sq(player.size + bullet.size)) {
+			console.log("collision! (-" + bullet.damage + ")");
 			player.health -= bullet.damage;
 			return null;
 		}
 		return bullet
 	}).filter(x=>x);
+
+	enemyBullets = enemyBullets.concat(childBullets);
 
 	playerBullets = playerBullets.map(bullet=>{
 		bullet.x += bullet.deltaX
@@ -205,7 +254,12 @@ function tick() {
 		if (!bulletUsed)
 			return bullet
 	}).filter(x=>x);
+	frameTime = frameStart - frameEnd
+	frameEnd = performance.now()
 
+	if (frameTime > (1000 / 30)) { // 60 fps
+		console.log("Lagging (" + (frameTime) + ") with " + enemyBullets.length)
+	}
 	window.requestAnimationFrame(tick)
 }
 
