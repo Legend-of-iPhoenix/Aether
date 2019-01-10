@@ -255,7 +255,7 @@ function tick() {
 			return bullet
 	}).filter(x=>x);
 	frameTime = frameStart - frameEnd
-	frameEnd = performance.now()
+	frameEnd = frameStart
 
 	if (frameTime > (1000 / 30)) { // 60 fps
 		console.log("Lagging (" + (frameTime) + ") with " + enemyBullets.length)
